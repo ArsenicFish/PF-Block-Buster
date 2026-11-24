@@ -1,8 +1,21 @@
+# This is the First semester project of Programming Fundamentals.
+
+The three contributers are::
+
+1. Zayd Abdullah (26L-0522) (ArsenicFish)
+2. Abdullah Tanveer (26L-0515)
+3. Muhammad Hassan (26L-0535)
 #include <SFML/Graphics.hpp>
 #include<iostream>
 #include <fstream>
+#include <cstdlib>
+
 float ballSpeedX = 0;
 float ballSpeedY = 0;
+
+int lives = 3;
+bool gameOver = false;
+
 enum KeyAction
 {
     NONE,
@@ -12,39 +25,45 @@ enum KeyAction
     UP,
     DOWN
 };
+
 KeyAction pressedKey = NONE;
 bool ballLaunched = false;
 
 void updateGame(float& paddleX, float& ballX, float& ballY)
 {
+    if (gameOver)
+        return;
+
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left) ||
         sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
         paddleX = paddleX - 8; // true for every frame the key is held down
+
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right) ||
         sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
-        paddleX = paddleX + 8; // true for every frame the key is held down
+        paddleX = paddleX + 8;
 
-    if (paddleX < 0)                       //left bounadry limit for paddle
+    if (paddleX < 0)                       //left boundary limit for paddle
     {
         paddleX = 0;
     }
+
     if (paddleX > 500)                     //right boundary limit for paddle
     {
         paddleX = 500;
     }
 
-    if (!ballLaunched)                                  //the ball stays on top of paddle before launch
+    if (!ballLaunched)                     //the ball stays on top of paddle before launch
     {
-         ballX = paddleX + 44.f;
-         ballY = 630.f;
+        ballX = paddleX + 44.f;
+        ballY = 630.f;
     }
 
-
-    if (pressedKey == LAUNCH && !ballLaunched)             //for launching ball only once
+    if (pressedKey == LAUNCH && !ballLaunched) //for launching ball only once
     {
         ballLaunched = true;
         ballSpeedY = -5;
-        if (rand() % 2)                                    // for deciding direction randomly
+
+        if (rand() % 2)                    //for deciding direction randomly
         {
             ballSpeedX = 3;
         }
@@ -52,36 +71,60 @@ void updateGame(float& paddleX, float& ballX, float& ballY)
         {
             ballSpeedX = -3;
         }
-
     }
 
-    if (ballLaunched)                                   // for motion of ball
+    if (ballLaunched)                      //for motion of ball
     {
         ballX += ballSpeedX;
         ballY += ballSpeedY;
     }
-    if (ballX <= 0 || ballX >= 590)                     // right and left boundary limits for ball 
+
+    if (ballX <= 0 || ballX >= 590)        //right and left boundary limits for ball
     {
         ballSpeedX = -ballSpeedX;
     }
-    if (ballY <= 0)                                     // top boundary for ball
+
+    if (ballY <= 0)                        //top boundary for ball
     {
         ballSpeedY = -ballSpeedY;
     }
+
     //ball collision with paddle
-    if (ballY + 16 >= 650 && ballY <= 664 && ballX + 16 >= paddleX && ballX <= paddleX + 100 && ballSpeedY > 0)
+    if (ballY + 16 >= 650 && ballY <= 664 &&
+        ballX + 16 >= paddleX && ballX <= paddleX + 100 &&
+        ballSpeedY > 0)
     {
-        float paddlewidth = 100;                                       
-        float part = (ballX + 8.f - paddleX) * 4.f / paddlewidth;       //differnt direction and speed depending on which part of paddle ball hits
+        float paddlewidth = 100;
+        float part = (ballX + 8.f - paddleX) * 4.f / paddlewidth;
+
         if (part < 0)
             part = 0;
+
         if (part > 4)
             part = 4;
 
-
-
         ballSpeedX = (part - 2) * 3;
         ballSpeedY = -5;
+    }
+
+    //ball falls below the screen
+    if (ballY > 700 && ballLaunched)
+    {
+        lives--;
+
+        if (lives <= 0)
+        {
+            gameOver = true;
+        }
+        else
+        {
+            ballLaunched = false;
+            ballSpeedX = 0;
+            ballSpeedY = 0;
+
+            ballX = paddleX + 44.f;
+            ballY = 630.f;
+        }
     }
 }
 
@@ -90,30 +133,56 @@ int drawGame()
     sf::RenderWindow window(sf::VideoMode({ 600, 700 }), "Block Buster");
 
     sf::RectangleShape paddle({ 100.f, 14.f });
-    sf::CircleShape ball(8.f); // radius 6, so it fits in a 12 x 12 box
+    sf::CircleShape ball(8.f);
+
     window.setFramerateLimit(60);
 
-    const float BRICK_W = 60.f, BRICK_H = 25.f; // one brick is 60 x 25 pixels
-    const float BRICKS_Y = 100.f; // the bricks start at y = 100
-    sf::Color colors[4] = { sf::Color(25, 25, 45), // 0: no brick
-    sf::Color::Blue, // 1: one hit left
-    sf::Color::Magenta, // 2: two hits left
-    sf::Color::Red }; // 3: three hits left
+    //font for displaying lives
+    sf::Font font;
+
+    if (!font.openFromFile("arial.ttf"))
+    {
+        std::cout << "Font not found!";
+        return 0;
+    }
+
+    sf::Text livesText(font, "Lives: 3", 22);
+    livesText.setFillColor(sf::Color::Cyan);
+    livesText.setPosition({ 45.f, 10.f });
+
+    sf::Text gameOverText(font, "GAME OVER", 45);
+    gameOverText.setFillColor(sf::Color::Red);
+    gameOverText.setPosition({ 160.f, 300.f });
+
+    const float BRICK_W = 60.f;
+    const float BRICK_H = 25.f;
+    const float BRICKS_Y = 100.f;
+
+    sf::Color colors[4] =
+    {
+        sf::Color(0, 255, 255),    // Cyan
+        sf::Color(0, 150, 255),    // Blue
+        sf::Color(180, 0, 255),   // Purple
+        sf::Color(255, 50, 100)   // Pink
+    };
 
     const int Rows = 8;
     const int Cols = 10;
     int Bricks[Rows][Cols];
 
-    std::ifstream file("Bricks.txt");                           //if txt file not found 
+    std::ifstream file("Bricks.txt");       //if txt file not found
+
     if (!file.is_open())
     {
         std::cout << "File not found!";
         return 0;
     }
+
     int fileRows, fileCols;
 
     file >> fileRows >> fileCols;
-    for (int r = 0; r < Rows; r++)                              //taking bricks from file
+
+    for (int r = 0; r < Rows; r++)          //taking bricks from file
     {
         for (int c = 0; c < Cols; c++)
         {
@@ -123,39 +192,38 @@ int drawGame()
 
     file.close();
 
-    sf::RectangleShape brick({ BRICK_W - 2, BRICK_H - 2 }); // smaller, so a gap shows
-    // for the brick at row r and column c:
+    sf::RectangleShape brick({ BRICK_W - 2, BRICK_H - 2 });
+
+    //for the brick at row r and column c:
     float paddleX = 250.f;
     float ballX = 200.f;
     float ballY = 630.f;
 
-
-    while (window.isOpen())                                           // actual display
+    while (window.isOpen())                 //actual display
     {
-       
         pressedKey = NONE;
-        
-        // Handle window closing
+
+        //Handle window closing
         while (const std::optional event = window.pollEvent())
         {
             if (event->is<sf::Event::Closed>())
                 window.close();
-       
-            
+
             else if (const auto* key = event->getIf<sf::Event::KeyPressed>())
             {
                 if (key->code == sf::Keyboard::Key::Space)
-                    pressedKey = LAUNCH; // the key the player pressed
-                // ... Enter, Escape, Up, Down in the same way
-                
+                    pressedKey = LAUNCH;    //the key the player pressed
             }
         }
 
-        updateGame(paddleX,ballX,ballY);
+        updateGame(paddleX, ballX, ballY);
+
+        //update lives display
+        livesText.setString("Lives: " + std::to_string(lives));
 
         window.clear(sf::Color::Black);
 
-        for (int r = 0; r < Rows; r++)                            //loop for every brick
+        for (int r = 0; r < Rows; r++)      //loop for every brick
         {
             for (int c = 0; c < Cols; c++)
             {
@@ -164,25 +232,38 @@ int drawGame()
 
                 brick.setFillColor(colors[Bricks[r][c]]);
                 brick.setPosition({ c * BRICK_W + 1, BRICKS_Y + r * BRICK_H + 1 });
-               
+
                 window.draw(brick);
             }
         }
-        
-       
-        paddle.setPosition({ (float)paddleX, 650.f });
-        ball.setPosition({ (float)ballX, (float)ballY });
-        window.draw(paddle);
-        window.draw(ball);
+
+        //draw paddle and ball
+        if (!gameOver)
+        {
+            paddle.setPosition({ paddleX, 650.f });
+            ball.setPosition({ ballX, ballY });
+
+            window.draw(paddle);
+            window.draw(ball);
+        }
+
+        //display lives
+        window.draw(livesText);
+
+        //display game over
+        if (gameOver)
+        {
+            window.draw(gameOverText);
+        }
+
         window.display();
     }
-    
 
-    
-
+    return 0;
 }
+
 int main()
 {
     drawGame();
-    
+    return 0;
 }
