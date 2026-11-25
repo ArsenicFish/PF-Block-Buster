@@ -24,7 +24,40 @@ enum KeyAction
 
 KeyAction pressedKey = NONE;
 bool ballLaunched = false;
-bool checkBricks(float ballX, float ballY,int bricks[Rows][Cols], int& score);
+bool checkBricks(float ballX, float ballY, int bricks[Rows][Cols], int& score);
+
+void restartGame(int bricks[Rows][Cols], int& score, float& paddleX, float& ballX, float& ballY)
+{
+    lives = 3;
+    gameOver = false;
+    ballLaunched = false;
+    ballSpeedX = 0;
+    ballSpeedY = 0;
+    score = 0;
+
+    paddleX = 250.f;
+    ballX = paddleX + 44.f;
+    ballY = 630.f;
+
+    std::ifstream file("Bricks.txt");
+
+    if (file.is_open())
+    {
+        int fileRows, fileCols;
+        file >> fileRows >> fileCols;
+
+        for (int r = 0; r < Rows; r++)
+        {
+            for (int c = 0; c < Cols; c++)
+            {
+                file >> bricks[r][c];
+            }
+        }
+
+        file.close();
+    }
+}
+
 void updateGame(float& paddleX, float& ballX, float& ballY, int bricks[Rows][Cols], int& score)
 {
     if (gameOver)
@@ -74,14 +107,14 @@ void updateGame(float& paddleX, float& ballX, float& ballY, int bricks[Rows][Col
         ballX += ballSpeedX;
         if (checkBricks(ballX, ballY, bricks, score))
         {
-            ballX -= ballSpeedX;       
-            ballSpeedX = -ballSpeedX;  
+            ballX -= ballSpeedX;
+            ballSpeedX = -ballSpeedX;
         }
         ballY += ballSpeedY;
         if (checkBricks(ballX, ballY, bricks, score))
         {
-            ballY -= ballSpeedY;       
-            ballSpeedY = -ballSpeedY;  
+            ballY -= ballSpeedY;
+            ballSpeedY = -ballSpeedY;
         }
     }
 
@@ -135,14 +168,14 @@ void updateGame(float& paddleX, float& ballX, float& ballY, int bricks[Rows][Col
 }
 const int BALL_SIZE = 16.f;
 
-bool checkBricks(float ballX, float ballY,int bricks[Rows][Cols], int& score)
+bool checkBricks(float ballX, float ballY, int bricks[Rows][Cols], int& score)
 {
     bool touched = false;
     bool checked[Rows][Cols] = {};
 
-    float cx[4] = {ballX,ballX + BALL_SIZE,ballX,ballX + BALL_SIZE};
+    float cx[4] = { ballX,ballX + BALL_SIZE,ballX,ballX + BALL_SIZE };
 
-    float cy[4] = {ballY,ballY,ballY + BALL_SIZE,ballY + BALL_SIZE};
+    float cy[4] = { ballY,ballY,ballY + BALL_SIZE,ballY + BALL_SIZE };
 
     for (int i = 0; i < 4; i++)
     {
@@ -207,6 +240,10 @@ int drawGame()
     Totalscore.setFillColor(sf::Color::Yellow);
     Totalscore.setPosition({ 140.f, 360.f });
 
+    sf::Text restartText(font, "Press R to Restart", 22);
+    restartText.setFillColor(sf::Color::White);
+    restartText.setPosition({ 190.f, 430.f });
+
     sf::Text scoreText(font, "Score: 0", 22);
     scoreText.setFillColor(sf::Color::Yellow);
     scoreText.setPosition({ 400.f, 10.f });
@@ -217,10 +254,10 @@ int drawGame()
 
     sf::Color colors[4] =
     {
-        sf::Color(0, 255, 255), 
-        sf::Color(0, 150, 255),   
-        sf::Color(180, 0, 255),   
-        sf::Color(255, 50, 100)   
+        sf::Color(0, 255, 255),
+        sf::Color(0, 150, 255),
+        sf::Color(180, 0, 255),
+        sf::Color(255, 50, 100)
     };
 
     const int Rows = 8;
@@ -271,13 +308,18 @@ int drawGame()
             {
                 if (key->code == sf::Keyboard::Key::Space)
                     pressedKey = LAUNCH;    //the key the player pressed
+
+                else if (key->code == sf::Keyboard::Key::R && gameOver)
+                {
+                    restartGame(Bricks, score, paddleX, ballX, ballY);
+                }
             }
         }
-        
-        
 
-        updateGame(paddleX, ballX, ballY,Bricks,score);
-        
+
+
+        updateGame(paddleX, ballX, ballY, Bricks, score);
+
 
         //update lives
         livesText.setString("Lives: " + std::to_string(lives));
@@ -322,6 +364,7 @@ int drawGame()
         {
             window.draw(gameOverText);
             window.draw(Totalscore);
+            window.draw(restartText);
         }
 
         window.display();
