@@ -1,10 +1,4 @@
-# This is the First semester project of Programming Fundamentals.
 
-The three contributers are::
-
-1. Zayd Abdullah (26L-0522) (ArsenicFish)
-2. Abdullah Tanveer (26L-0515)
-3. Muhammad Hassan (26L-0535)
 #include <SFML/Graphics.hpp>
 #include<iostream>
 #include <fstream>
@@ -12,7 +6,8 @@ The three contributers are::
 
 float ballSpeedX = 0;
 float ballSpeedY = 0;
-
+const int Rows = 8;
+const int Cols = 10;
 int lives = 3;
 bool gameOver = false;
 
@@ -28,8 +23,8 @@ enum KeyAction
 
 KeyAction pressedKey = NONE;
 bool ballLaunched = false;
-
-void updateGame(float& paddleX, float& ballX, float& ballY)
+bool checkBricks(float ballX, float ballY,int bricks[Rows][Cols], int& score);
+void updateGame(float& paddleX, float& ballX, float& ballY, int bricks[Rows][Cols], int& score)
 {
     if (gameOver)
         return;
@@ -76,10 +71,20 @@ void updateGame(float& paddleX, float& ballX, float& ballY)
     if (ballLaunched)                      //for motion of ball
     {
         ballX += ballSpeedX;
+        if (checkBricks(ballX, ballY, bricks, score))
+        {
+            ballX -= ballSpeedX;       
+            ballSpeedX = -ballSpeedX;  
+        }
         ballY += ballSpeedY;
+        if (checkBricks(ballX, ballY, bricks, score))
+        {
+            ballY -= ballSpeedY;       
+            ballSpeedY = -ballSpeedY;  
+        }
     }
 
-    if (ballX <= 0 || ballX >= 590)        //right and left boundary limits for ball
+    if (ballX <= 0 || ballX >= 586)        //right and left boundary limits for ball
     {
         ballSpeedX = -ballSpeedX;
     }
@@ -127,7 +132,50 @@ void updateGame(float& paddleX, float& ballX, float& ballY)
         }
     }
 }
+const int BALL_SIZE = 16.f;
 
+bool checkBricks(float ballX, float ballY,int bricks[Rows][Cols], int& score)
+{
+    bool touched = false;
+    bool checked[Rows][Cols] = {};
+
+    float cx[4] = {ballX,ballX + BALL_SIZE,ballX,ballX + BALL_SIZE};
+
+    float cy[4] = {ballY,ballY,ballY + BALL_SIZE,ballY + BALL_SIZE};
+
+    for (int i = 0; i < 4; i++)
+    {
+        // Check if corner is inside the brick area
+        if (cy[i] >= 100 && cy[i] < 300 &&
+            cx[i] >= 0 && cx[i] < 600)
+        {
+            int r = (cy[i] - 100) / 25;
+            int c = cx[i] / 60;
+
+            // to avoid hitting the same brick twice
+            if (!checked[r][c])
+            {
+                checked[r][c] = true;
+
+                if (bricks[r][c] > 0)
+                {
+                    bricks[r][c]--;
+
+                    touched = true;
+
+                    if (bricks[r][c] == 0)
+                    {
+                        score += 50;
+                    }
+                    else
+                        score += 10;
+                }
+            }
+        }
+    }
+
+    return touched;
+}
 int drawGame()
 {
     sf::RenderWindow window(sf::VideoMode({ 600, 700 }), "Block Buster");
@@ -154,16 +202,24 @@ int drawGame()
     gameOverText.setFillColor(sf::Color::Red);
     gameOverText.setPosition({ 160.f, 300.f });
 
+    sf::Text Totalscore(font, "Total Score: 0", 45);
+    Totalscore.setFillColor(sf::Color::Yellow);
+    Totalscore.setPosition({ 140.f, 360.f });
+
+    sf::Text scoreText(font, "Score: 0", 22);
+    scoreText.setFillColor(sf::Color::Yellow);
+    scoreText.setPosition({ 400.f, 10.f });
+
     const float BRICK_W = 60.f;
     const float BRICK_H = 25.f;
     const float BRICKS_Y = 100.f;
 
     sf::Color colors[4] =
     {
-        sf::Color(0, 255, 255),    // Cyan
-        sf::Color(0, 150, 255),    // Blue
-        sf::Color(180, 0, 255),   // Purple
-        sf::Color(255, 50, 100)   // Pink
+        sf::Color(0, 255, 255), 
+        sf::Color(0, 150, 255),   
+        sf::Color(180, 0, 255),   
+        sf::Color(255, 50, 100)   
     };
 
     const int Rows = 8;
@@ -191,6 +247,7 @@ int drawGame()
     }
 
     file.close();
+    int score = 0;
 
     sf::RectangleShape brick({ BRICK_W - 2, BRICK_H - 2 });
 
@@ -215,11 +272,18 @@ int drawGame()
                     pressedKey = LAUNCH;    //the key the player pressed
             }
         }
+        
+        
 
-        updateGame(paddleX, ballX, ballY);
+        updateGame(paddleX, ballX, ballY,Bricks,score);
+        
 
-        //update lives display
+        //update lives
         livesText.setString("Lives: " + std::to_string(lives));
+        //update score
+        scoreText.setString("Score: " + std::to_string(score));
+        //ipdate total score
+        Totalscore.setString("Total Score: " + std::to_string(score));
 
         window.clear(sf::Color::Black);
 
@@ -249,11 +313,14 @@ int drawGame()
 
         //display lives
         window.draw(livesText);
+        //display score
+        window.draw(scoreText);
 
         //display game over
         if (gameOver)
         {
             window.draw(gameOverText);
+            window.draw(Totalscore);
         }
 
         window.display();
