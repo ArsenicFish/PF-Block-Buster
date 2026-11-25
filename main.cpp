@@ -3,6 +3,7 @@
 #include<iostream>
 #include <fstream>
 #include <cstdlib>
+#include <optional>
 
 float ballSpeedX = 0;
 float ballSpeedY = 0;
