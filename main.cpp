@@ -128,7 +128,7 @@ void updateGame(float& paddleX, float& ballX, float& ballY, int bricks[Rows][Col
         }
     }
 
-    if (ballX <= 0 || ballX >= 586)        //right and left boundary limits for ball
+    if (ballX <= 0.f || ballX >= 586)        //right and left boundary limits for ball
     {
         ballSpeedX = -ballSpeedX;
     }
@@ -222,10 +222,10 @@ bool checkBricks(float ballX, float ballY, int bricks[Rows][Cols], int& score)
 }
 
 
-void saveGame(int bricks[Rows][Cols], int score)
+void saveGame(int bricks[Rows][Cols], int score, float paddleX, float ballX, float ballY)
 {
     std::ofstream out("savegame.txt");
-    out << score << " " << lives << "\n";
+    out << score << " " << lives << " "<< paddleX << " "<< ballX << " " << ballY << " "<< ballSpeedX << " " << ballSpeedY << " "<< ballLaunched << "\n";
     for (int r = 0; r < Rows; r++)
     {
         for (int c = 0; c < Cols; c++)
@@ -238,24 +238,23 @@ void saveGame(int bricks[Rows][Cols], int score)
 bool loadGame(int bricks[Rows][Cols], int& score, float& paddleX, float& ballX, float& ballY)
 {
     std::ifstream in("savegame.txt");
-    int s, l;
-    if (!(in >> s >> l))
+    
+    if (!(in >> score >> lives>> paddleX>> ballX >> ballY>> ballSpeedX >> ballSpeedY>> ballLaunched))
         return false;
 
-    score = s;
-    lives = l;
+   
     for (int r = 0; r < Rows; r++)
         for (int c = 0; c < Cols; c++)
             in >> bricks[r][c];
 
     gameOver = false;
     playerWon = false;
-    ballLaunched = false;
+   /* ballLaunched = false;
     ballSpeedX = 0;
     ballSpeedY = 0;
     paddleX = 250.f;
     ballX = paddleX + 44.f;
-    ballY = 630.f;
+    ballY = 630.f;*/
     return true;
 }
 
@@ -408,7 +407,7 @@ int drawGame()
         case PLAYING:
             if (pressedKey == ESCAPE)               // save and go back to menu
             {
-                saveGame(Bricks, score);
+                saveGame(Bricks, score,paddleX,ballX,ballY);
                 gameState = MENU;
                 menuMessage = "";
                 break;
