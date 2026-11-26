@@ -1,9 +1,10 @@
 
-#include <SFML/Graphics.hpp>
+#include <SFML/Graphics.hpp>                  
 #include<iostream>
 #include <fstream>
 #include <cstdlib>
 #include <optional>
+#include <string>                              
 
 float ballSpeedX = 0;
 float ballSpeedY = 0;
@@ -22,14 +23,22 @@ enum KeyAction
     DOWN
 };
 
+const int MENU = 0;                            
+const int PLAYING = 1;                         
+const int GAME_OVER = 2;                       
+int gameState = MENU;                          
+bool playerWon = false;                        
+
 KeyAction pressedKey = NONE;
 bool ballLaunched = false;
 bool checkBricks(float ballX, float ballY, int bricks[Rows][Cols], int& score);
 
-void restartGame(int bricks[Rows][Cols], int& score, float& paddleX, float& ballX, float& ballY)
+
+bool restartGame(int bricks[Rows][Cols], int& score, float& paddleX, float& ballX, float& ballY)
 {
     lives = 3;
     gameOver = false;
+    playerWon = false;                         
     ballLaunched = false;
     ballSpeedX = 0;
     ballSpeedY = 0;
@@ -41,21 +50,22 @@ void restartGame(int bricks[Rows][Cols], int& score, float& paddleX, float& ball
 
     std::ifstream file("Bricks.txt");
 
-    if (file.is_open())
+    if (!file.is_open())                       
+        return false;                          
+
+    int fileRows, fileCols;
+    file >> fileRows >> fileCols;
+
+    for (int r = 0; r < Rows; r++)
     {
-        int fileRows, fileCols;
-        file >> fileRows >> fileCols;
-
-        for (int r = 0; r < Rows; r++)
+        for (int c = 0; c < Cols; c++)
         {
-            for (int c = 0; c < Cols; c++)
-            {
-                file >> bricks[r][c];
-            }
+            file >> bricks[r][c];
         }
-
-        file.close();
     }
+
+    file.close();
+    return true;                               
 }
 
 void updateGame(float& paddleX, float& ballX, float& ballY, int bricks[Rows][Cols], int& score)
@@ -65,34 +75,34 @@ void updateGame(float& paddleX, float& ballX, float& ballY, int bricks[Rows][Col
 
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left) ||
         sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
-        paddleX = paddleX - 8; // true for every frame the key is held down
+        paddleX = paddleX - 8; 
 
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right) ||
         sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
         paddleX = paddleX + 8;
 
-    if (paddleX < 0)                       //left boundary limit for paddle
+    if (paddleX < 0)                       
     {
         paddleX = 0;
     }
 
-    if (paddleX > 500)                     //right boundary limit for paddle
+    if (paddleX > 500)                     
     {
         paddleX = 500;
     }
 
-    if (!ballLaunched)                     //the ball stays on top of paddle before launch
+    if (!ballLaunched)                     
     {
         ballX = paddleX + 44.f;
         ballY = 630.f;
     }
 
-    if (pressedKey == LAUNCH && !ballLaunched) //for launching ball only once
+    if (pressedKey == LAUNCH && !ballLaunched) 
     {
         ballLaunched = true;
         ballSpeedY = -5;
 
-        if (rand() % 2)                    //for deciding direction randomly
+        if (rand() % 2)                    
         {
             ballSpeedX = 3;
         }
@@ -102,7 +112,7 @@ void updateGame(float& paddleX, float& ballX, float& ballY, int bricks[Rows][Col
         }
     }
 
-    if (ballLaunched)                      //for motion of ball
+    if (ballLaunched)                      
     {
         ballX += ballSpeedX;
         if (checkBricks(ballX, ballY, bricks, score))
@@ -210,6 +220,51 @@ bool checkBricks(float ballX, float ballY, int bricks[Rows][Cols], int& score)
 
     return touched;
 }
+
+
+void saveGame(int bricks[Rows][Cols], int score)
+{
+    std::ofstream out("savegame.txt");
+    out << score << " " << lives << "\n";
+    for (int r = 0; r < Rows; r++)
+    {
+        for (int c = 0; c < Cols; c++)
+            out << bricks[r][c] << " ";
+        out << "\n";
+    }
+}
+
+
+bool loadGame(int bricks[Rows][Cols], int& score, float& paddleX, float& ballX, float& ballY)
+{
+    std::ifstream in("savegame.txt");
+    int s, l;
+    if (!(in >> s >> l))
+        return false;
+
+    score = s;
+    lives = l;
+    for (int r = 0; r < Rows; r++)
+        for (int c = 0; c < Cols; c++)
+            in >> bricks[r][c];
+
+    gameOver = false;
+    playerWon = false;
+    ballLaunched = false;
+    ballSpeedX = 0;
+    ballSpeedY = 0;
+    paddleX = 250.f;
+    ballX = paddleX + 44.f;
+    ballY = 630.f;
+    return true;
+}
+
+//  empties savegame.txt (open and close straight away)
+void clearSave()
+{
+    std::ofstream out("savegame.txt");
+}
+
 int drawGame()
 {
     sf::RenderWindow window(sf::VideoMode({ 600, 700 }), "Block Buster");
@@ -240,13 +295,22 @@ int drawGame()
     Totalscore.setFillColor(sf::Color::Yellow);
     Totalscore.setPosition({ 140.f, 360.f });
 
-    sf::Text restartText(font, "Press R to Restart", 22);
+    sf::Text restartText(font, "Press Enter", 22);     
     restartText.setFillColor(sf::Color::White);
     restartText.setPosition({ 190.f, 430.f });
 
     sf::Text scoreText(font, "Score: 0", 22);
     scoreText.setFillColor(sf::Color::Yellow);
     scoreText.setPosition({ 400.f, 10.f });
+
+    
+    sf::Text titleText(font, "BLOCK BUSTER", 50);
+    titleText.setFillColor(sf::Color::Cyan);
+    titleText.setPosition({ 100.f, 120.f });
+
+    std::string menuItems[3] = { "New Game", "Continue", "Exit" };
+    int menuChoice = 0;                        // which option is highlighted
+    std::string menuMessage = "";              // error line shown on the menu
 
     const float BRICK_W = 60.f;
     const float BRICK_H = 25.f;
@@ -262,29 +326,11 @@ int drawGame()
 
     const int Rows = 8;
     const int Cols = 10;
-    int Bricks[Rows][Cols];
+    int Bricks[Rows][Cols] = {};               
 
-    std::ifstream file("Bricks.txt");       //if txt file not found
+    
+    
 
-    if (!file.is_open())
-    {
-        std::cout << "File not found!";
-        return 0;
-    }
-
-    int fileRows, fileCols;
-
-    file >> fileRows >> fileCols;
-
-    for (int r = 0; r < Rows; r++)          //taking bricks from file
-    {
-        for (int c = 0; c < Cols; c++)
-        {
-            file >> Bricks[r][c];
-        }
-    }
-
-    file.close();
     int score = 0;
 
     sf::RectangleShape brick({ BRICK_W - 2, BRICK_H - 2 });
@@ -294,7 +340,7 @@ int drawGame()
     float ballX = 200.f;
     float ballY = 630.f;
 
-    while (window.isOpen())                 //actual display
+    while (window.isOpen())                 
     {
         pressedKey = NONE;
 
@@ -309,17 +355,97 @@ int drawGame()
                 if (key->code == sf::Keyboard::Key::Space)
                     pressedKey = LAUNCH;    //the key the player pressed
 
-                else if (key->code == sf::Keyboard::Key::R && gameOver)
-                {
-                    restartGame(Bricks, score, paddleX, ballX, ballY);
-                }
+                
+
+                if (key->code == sf::Keyboard::Key::Enter)     
+                    pressedKey = ENTER;                        
+                if (key->code == sf::Keyboard::Key::Escape)    
+                    pressedKey = ESCAPE;                       
+                if (key->code == sf::Keyboard::Key::Up)       
+                    pressedKey = UP;                           
+                if (key->code == sf::Keyboard::Key::Down)      
+                    pressedKey = DOWN;                         
             }
         }
 
+        
+        switch (gameState)
+        {
+        case MENU:
+            if (pressedKey == UP)
+            {
+                menuChoice--;
+                if (menuChoice < 0)
+                    menuChoice = 2;                 
+                menuMessage = "";
+            }
+            if (pressedKey == DOWN)
+            {
+                menuChoice = (menuChoice + 1) % 3;  
+                menuMessage = "";
+            }
+            if (pressedKey == ENTER)
+            {
+                if (menuChoice == 0)                
+                {
+                    if (restartGame(Bricks, score, paddleX, ballX, ballY))
+                        gameState = PLAYING;
+                    else
+                        menuMessage = "Bricks.txt not found!";
+                }
+                else if (menuChoice == 1)           // Continue
+                {
+                    if (loadGame(Bricks, score, paddleX, ballX, ballY))
+                        gameState = PLAYING;
+                    else
+                        menuMessage = "No saved game";
+                }
+                else                                // Exit
+                    window.close();
+            }
+            break;
 
+        case PLAYING:
+            if (pressedKey == ESCAPE)               // save and go back to menu
+            {
+                saveGame(Bricks, score);
+                gameState = MENU;
+                menuMessage = "";
+                break;
+            }
 
-        updateGame(paddleX, ballX, ballY, Bricks, score);
+            updateGame(paddleX, ballX, ballY, Bricks, score);   
 
+            if (!gameOver)                          
+            {
+                bool anyBrickLeft = false;
+                for (int r = 0; r < Rows; r++)
+                    for (int c = 0; c < Cols; c++)
+                        if (Bricks[r][c] > 0)
+                            anyBrickLeft = true;
+
+                if (!anyBrickLeft)
+                {
+                    playerWon = true;
+                    gameOver = true;                
+                }
+            }
+
+            if (gameOver)                           
+            {
+                clearSave();
+                gameState = GAME_OVER;
+            }
+            break;
+
+        case GAME_OVER:
+            if (pressedKey == ENTER)
+            {
+                gameState = MENU;
+                menuMessage = "";
+            }
+            break;
+        }
 
         //update lives
         livesText.setString("Lives: " + std::to_string(lives));
@@ -327,45 +453,74 @@ int drawGame()
         scoreText.setString("Score: " + std::to_string(score));
         //ipdate total score
         Totalscore.setString("Total Score: " + std::to_string(score));
+        //  "YOU WIN" or "GAME OVER"
+        gameOverText.setString(playerWon ? "YOU WIN" : "GAME OVER");
 
         window.clear(sf::Color::Black);
 
-        for (int r = 0; r < Rows; r++)      //loop for every brick
+        if (gameState == MENU)                      
         {
-            for (int c = 0; c < Cols; c++)
+            window.draw(titleText);
+            for (int i = 0; i < 3; i++)
             {
-                if (Bricks[r][c] == 0)
-                    continue;
-
-                brick.setFillColor(colors[Bricks[r][c]]);
-                brick.setPosition({ c * BRICK_W + 1, BRICKS_Y + r * BRICK_H + 1 });
-
-                window.draw(brick);
+                sf::Text item(font, menuItems[i], 32);
+                item.setPosition({ 210.f, 260.f + i * 60.f });
+                if (i == menuChoice)
+                {
+                    item.setString("> " + menuItems[i]);   
+                    item.setFillColor(sf::Color::Yellow);
+                }
+                else
+                    item.setFillColor(sf::Color::White);
+                window.draw(item);
+            }
+            if (menuMessage != "")
+            {
+                sf::Text msg(font, menuMessage, 24);
+                msg.setFillColor(sf::Color::Red);
+                msg.setPosition({ 200.f, 460.f });
+                window.draw(msg);
             }
         }
-
-        //draw paddle and ball
-        if (!gameOver)
+        else                                        
         {
-            paddle.setPosition({ paddleX, 650.f });
-            ball.setPosition({ ballX, ballY });
+            for (int r = 0; r < Rows; r++)      
+            {
+                for (int c = 0; c < Cols; c++)
+                {
+                    if (Bricks[r][c] == 0)
+                        continue;
 
-            window.draw(paddle);
-            window.draw(ball);
-        }
+                    brick.setFillColor(colors[Bricks[r][c]]);
+                    brick.setPosition({ c * BRICK_W + 1, BRICKS_Y + r * BRICK_H + 1 });
 
-        //display lives
-        window.draw(livesText);
-        //display score
-        window.draw(scoreText);
+                    window.draw(brick);
+                }
+            }
 
-        //display game over
-        if (gameOver)
-        {
-            window.draw(gameOverText);
-            window.draw(Totalscore);
-            window.draw(restartText);
-        }
+            //draw paddle and ball
+            if (!gameOver)
+            {
+                paddle.setPosition({ paddleX, 650.f });
+                ball.setPosition({ ballX, ballY });
+
+                window.draw(paddle);
+                window.draw(ball);
+            }
+
+            //display lives
+            window.draw(livesText);
+            //display score
+            window.draw(scoreText);
+
+            //display game over
+            if (gameOver)
+            {
+                window.draw(gameOverText);
+                window.draw(Totalscore);
+                window.draw(restartText);
+            }
+        }                                           
 
         window.display();
     }
