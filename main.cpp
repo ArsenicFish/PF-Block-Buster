@@ -1,3 +1,4 @@
+
 #include <SFML/Graphics.hpp>
 #include <iostream>
 #include <fstream>
@@ -323,6 +324,11 @@ int drawGame()
     Totalscore.setFillColor(sf::Color::Yellow);
     Totalscore.setPosition({ 140.f, 360.f });
 
+    // Display win message
+    sf::Text winText(font, "YOU WIN!", 60);
+    winText.setFillColor(sf::Color::Green);
+    winText.setPosition({ 150.f, 280.f });
+
     sf::Text restartText(font, "Press Enter", 22);
     restartText.setFillColor(sf::Color::White);
     restartText.setPosition({ 190.f, 430.f });
@@ -502,9 +508,6 @@ int drawGame()
         scoreText.setString("Score: " + std::to_string(score));
         Totalscore.setString("Total Score: " + std::to_string(score));
 
-        // Display "YOU WIN" or "GAME OVER"
-        gameOverText.setString(playerWon ? "YOU WIN" : "GAME OVER");
-
         // Draw background first
         window.clear();
         window.draw(background);
@@ -574,7 +577,11 @@ int drawGame()
             // Display game over screen
             if (gameOver)
             {
-                window.draw(gameOverText);
+                if (playerWon)
+                    window.draw(winText);
+                else
+                    window.draw(gameOverText);
+
                 window.draw(Totalscore);
                 window.draw(restartText);
             }
